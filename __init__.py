@@ -328,7 +328,7 @@ def _create_mesh_object(mesh_def, material_map: Dict[int, bpy.types.Material], t
 
     mesh_data = bpy.data.meshes.new(mesh_def.name or "3DO_Mesh")
     mesh_data.from_pydata(verts, [], faces)
-    mesh_data.update()
+    mesh_data.update(calc_edges=True)
 
     slot_lookup: Dict[int, int] = {}
     for slot_idx, mat_idx in enumerate(sorted(material_map.keys())):
@@ -353,7 +353,8 @@ def _create_mesh_object(mesh_def, material_map: Dict[int, bpy.types.Material], t
                 uv_layer.data[loop_idx].uv = (u, v)
 
     obj = bpy.data.objects.new(mesh_def.name or "3DO_Object", mesh_data)
-    _calc_normals_safe(mesh_data)
+    # Let Blender compute normals
+    mesh_data.calc_normals()
     return obj
 
 
