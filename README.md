@@ -23,13 +23,13 @@ Import Jedi Knight: Dark Forces II / Mysteries of the Sith 3DO models directly f
 2. Click **Open GOB/GOO**, pick your archive.
 3. Select a 3DO from the list (filter with **Search** if needed).
 4. Set options:
-   - **Only Highest LOD**: import GeoSet 0 only.
+   - **Only Highest LOD**: import GeoSet 0 only. (recommended to leave this on)
    - **Texture Output**: optional directory to save decoded PNGs (otherwise textures stay packed).
 5. Click **Import**. Meshes appear under a parent object named after the 3DO.
 6. To export textures later, use **Save DF2 Textures**.
 
 ## Notes & Limits
-- Some 3DOs ship with empty meshes (e.g. `k_rhand` in `ky.3do`), so missing parts are often in the source data.
+- Some 3DOs ship with empty meshes (e.g. `k_rhand` in all `kyx.3do` files), so missing parts can be created with the mirror modifier if need be.
 - UVs use the MAT’s frame dimensions.
 - Only 3DO geometry/materials are imported; keyframes/animations are not included.
 
