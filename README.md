@@ -7,7 +7,7 @@ Import Jedi Knight: Dark Forces II / Mysteries of the Sith 3DO models directly f
 
 ## Features
 - Reads 3DO 2.1 files from a selected GOB/GOO.
-- Builds meshes, UVs, vertex/face normals, and applies MAT textures (8-bit with CMP palette or 16-bit).
+- Builds meshes, UVs, and applies MAT textures (8-bit with CMP palette or 16-bit); Blender handles normals itself.
 - Supports multiple GeoSets (LOD); option to import only the highest LOD.
 - Preserves hierarchy transforms (positions, rotations, pivots, insert offset) to correctly place limbs and parts.
 - Texture saver: export imported MATs to PNG.
