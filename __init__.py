@@ -364,18 +364,23 @@ def _build_objects(
     geoset_mode: str = "ALL",
 ) -> List[bpy.types.Object]:
     material_map = _ensure_materials(gob, three.materials, palette, tex_dir)
-    palette_sizes: Dict[int, Tuple[int, int]] = {}
-    for mat_def in three.materials:
-        entry = _find_entry_by_basename(gob, Path(mat_def.name).name)
-        if entry:
-            try:
-                data = gob.get_data(entry)
-                w, h, _, _ = _decode_mat_first_frame(data, palette)
-                palette_sizes[mat_def.index] = (w, h)
-            except Exception:
-                palette_sizes[mat_def.index] = (256, 256)
-        else:
-            palette_sizes[mat_def.index] = (256, 256)
+
+    def _build_palette_sizes(materials: List[Material]) -> Dict[int, Tuple[int, int]]:
+        sizes: Dict[int, Tuple[int, int]] = {}
+        for mat_def in materials:
+            entry = _find_entry_by_basename(gob, Path(mat_def.name).name)
+            if entry:
+                try:
+                    data = gob.get_data(entry)
+                    w, h, _, _ = _decode_mat_first_frame(data, palette)
+                    sizes[mat_def.index] = (w, h)
+                except Exception:
+                    sizes[mat_def.index] = (256, 256)
+            else:
+                sizes[mat_def.index] = (256, 256)
+        return sizes
+
+    palette_sizes = _build_palette_sizes(three.materials)
 
     # Coordinate conversion matrix (identity; swap Y/Z removed)
     conv_total = Matrix.Identity(4)
@@ -470,6 +475,34 @@ def _build_objects(
         mobj.matrix_parent_inverse.identity()
         # Include parent (insert offset) in world placement
         mobj.matrix_world = parent.matrix_world @ base_mat
+
+    # Special case: ky* player models get fistg.3do attached to right forearm
+    if three.path.name.lower().startswith("ky"):
+        fist_entry = _find_entry_by_basename(gob, "fistg.3do")
+        if fist_entry:
+            try:
+                fist_three = _parse_3do_from_gob(gob, fist_entry.name)
+                fist_mat_map = _ensure_materials(gob, fist_three.materials, palette, tex_dir)
+                fist_sizes = _build_palette_sizes(fist_three.materials)
+                # Use highest LOD only for fist
+                if fist_three.geosets:
+                    fist_geoset = fist_three.geosets[0]
+                    # Find right forearm node matrix from main model
+                    forearm_node = next((n for n in three.hierarchy_nodes if (n.name or "").lower() == "k_rforearm"), None)
+                    forearm_mat = Matrix.Identity(4)
+                    if forearm_node:
+                        forearm_mat = _node_world_matrix(forearm_node.index)
+                    for mesh_def in fist_geoset.meshes:
+                        obj = _create_mesh_object(mesh_def, fist_mat_map, mesh_def.texvertices, fist_sizes)
+                        context.collection.objects.link(obj)
+                        obj.parent = parent
+                        obj.parent_type = "OBJECT"
+                        obj.matrix_parent_inverse.identity()
+                        obj.matrix_world = parent.matrix_world @ forearm_mat
+                        created.append(obj)
+                        log.info("Attached fist mesh %s to k_rforearm", obj.name)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Failed to attach fistg.3do: %s", exc)
     return created
 
 
