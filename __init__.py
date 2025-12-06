@@ -1,7 +1,7 @@
 bl_info = {
     "name": "DF2 GOB 3DO Importer",
     "author": "Codex (uses gob.py, mat.py, 3do.py)",
-    "version": (0, 1, 0),
+    "version": (0, 2, 0),
     "blender": (3, 0, 0),
     "location": "View3D > Sidebar > DF2 Importer",
     "description": "Import Dark Forces II / Jedi Knight 3DO models from a GOB/GOO archive",
