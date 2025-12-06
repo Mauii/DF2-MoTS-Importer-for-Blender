@@ -466,54 +466,6 @@ def _build_objects(
         # Include parent (insert offset) in world placement
         mobj.matrix_world = parent.matrix_world @ base_mat
 
-    # If right hand is missing (or empty), mirror left hand across hip and parent to right forearm
-    name_to_obj: Dict[str, bpy.types.Object] = {}
-    for n in three.hierarchy_nodes:
-        if n.mesh_index is None or not n.name:
-            continue
-        obj = mesh_objects.get(n.mesh_index)
-        if obj:
-            name_to_obj[n.name.lower()] = obj
-
-    rhand_obj = name_to_obj.get("k_rhand")
-    rhand_missing = rhand_obj is None or (rhand_obj.data is not None and len(rhand_obj.data.vertices) == 0)
-    if rhand_missing and "k_lhand" in name_to_obj:
-        lhand = name_to_obj.get("k_lhand")
-        hip_obj = name_to_obj.get("k_hip")
-        rforearm = name_to_obj.get("k_rforearm")
-        if lhand and hip_obj and rforearm:
-            try:
-                temp = lhand.copy()
-                temp.data = lhand.data.copy()
-                temp.name = "k_rhand"
-                context.collection.objects.link(temp)
-                # Mirror around hip on X axis
-                mod = temp.modifiers.new(name="Mirror", type="MIRROR")
-                mod.use_axis = (True, False, False)
-                mod.mirror_object = hip_obj
-                depsgraph = bpy.context.evaluated_depsgraph_get()
-                eval_obj = temp.evaluated_get(depsgraph)
-                new_mesh = bpy.data.meshes.new_from_object(eval_obj)
-                temp.modifiers.clear()
-                temp.data = new_mesh
-
-                target = rhand_obj if rhand_obj is not None else temp
-                if target is not temp:
-                    target.data = new_mesh
-                    bpy.data.objects.remove(temp, do_unlink=True)
-                else:
-                    created.append(temp)
-
-                # Preserve world transform and parent to right forearm
-                target.matrix_world = lhand.matrix_world
-                target.parent = rforearm
-                target.parent_type = "OBJECT"
-                target.matrix_parent_inverse = rforearm.matrix_world.inverted() @ target.matrix_world
-                target.name = "k_rhand"
-                log.info("Created mirrored right hand from left hand")
-            except Exception as exc:  # noqa: BLE001
-                log.warning("Failed to mirror right hand: %s", exc)
-
     return created
 
 
