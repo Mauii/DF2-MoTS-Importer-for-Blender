@@ -136,7 +136,9 @@ def _load_model_display_map(gob: GOB) -> Dict[str, str]:
                 three = tok
                 break
         if three and name:
-            mapping[three.lower()] = name
+            key = three.lower()
+            mapping[key] = name
+            mapping[Path(key).name] = name  # also by basename
     return mapping
 
 
@@ -365,7 +367,7 @@ def _build_objects(
 ) -> List[bpy.types.Object]:
     material_map = _ensure_materials(gob, three.materials, palette, tex_dir)
 
-    def _build_palette_sizes(materials: List[Material]) -> Dict[int, Tuple[int, int]]:
+    def _build_palette_sizes(materials: List[MaterialDef]) -> Dict[int, Tuple[int, int]]:
         sizes: Dict[int, Tuple[int, int]] = {}
         for mat_def in materials:
             entry = _find_entry_by_basename(gob, Path(mat_def.name).name)
@@ -540,7 +542,9 @@ class DF2_OT_load_gob(Operator):
             if entry.name.lower().endswith(".3do"):
                 item = scene.df2_models.add()
                 item.name = entry.name
-                disp = _MODEL_DISPLAY_MAP.get(entry.name.lower(), entry.name)
+                key = entry.name.replace("\\", "/").lower()
+                base = Path(entry.name).name.lower()
+                disp = _MODEL_DISPLAY_MAP.get(key) or _MODEL_DISPLAY_MAP.get(base) or entry.name
                 item.display_name = disp
         scene.df2_models_index = 0
         log.info("Loaded GOB %s with %d 3DO(s)", self.filepath, len(scene.df2_models))
