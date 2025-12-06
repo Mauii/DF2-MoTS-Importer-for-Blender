@@ -486,6 +486,41 @@ def _build_objects(
                 fist_three = _parse_3do_from_gob(gob, fist_entry.name)
                 fist_mat_map = _ensure_materials(gob, fist_three.materials, palette, tex_dir)
                 fist_sizes = _build_palette_sizes(fist_three.materials)
+                # Build node matrices for fist (identity axis conversion)
+                fist_nodes = {n.index: n for n in fist_three.hierarchy_nodes}
+                fist_worlds: Dict[int, Matrix] = {}
+
+                def _fist_world(idx: int) -> Matrix:
+                    if idx in fist_worlds:
+                        return fist_worlds[idx]
+                    node = fist_nodes.get(idx)
+                    if node is None:
+                        fist_worlds[idx] = Matrix.Identity(4)
+                        return fist_worlds[idx]
+                    parent_mat = Matrix.Identity(4)
+                    parent_pivot = Vector((0.0, 0.0, 0.0))
+                    if node.parent_index is not None and node.parent_index != idx:
+                        parent_mat = _fist_world(node.parent_index)
+                        pnode = fist_nodes.get(node.parent_index)
+                        if pnode and pnode.pivot:
+                            parent_pivot = Vector(pnode.pivot)
+                    pos = Vector(node.position) if node.position else Vector((0.0, 0.0, 0.0))
+                    pivot = Vector(node.pivot) if node.pivot else Vector((0.0, 0.0, 0.0))
+                    rot_mat = Matrix.Identity(4)
+                    if node.rotation:
+                        eul = Euler(
+                            (
+                                math.radians(node.rotation[0]),
+                                math.radians(node.rotation[1]),
+                                math.radians(node.rotation[2]),
+                            ),
+                            "XYZ",
+                        )
+                        rot_mat = eul.to_matrix().to_4x4()
+                    local = Matrix.Translation(pivot) @ rot_mat @ Matrix.Translation(pos) @ Matrix.Translation(-parent_pivot)
+                    fist_worlds[idx] = parent_mat @ local
+                    return fist_worlds[idx]
+
                 # Use highest LOD only for fist
                 if fist_three.geosets:
                     fist_geoset = fist_three.geosets[0]
@@ -495,12 +530,16 @@ def _build_objects(
                     if forearm_node:
                         forearm_mat = _node_world_matrix(forearm_node.index)
                     for mesh_def in fist_geoset.meshes:
+                        mesh_node = next((n for n in fist_three.hierarchy_nodes if n.mesh_index == mesh_def.index), None)
+                        mesh_mat = Matrix.Identity(4)
+                        if mesh_node:
+                            mesh_mat = _fist_world(mesh_node.index)
                         obj = _create_mesh_object(mesh_def, fist_mat_map, mesh_def.texvertices, fist_sizes)
                         context.collection.objects.link(obj)
                         obj.parent = parent
                         obj.parent_type = "OBJECT"
                         obj.matrix_parent_inverse.identity()
-                        obj.matrix_world = parent.matrix_world @ forearm_mat
+                        obj.matrix_world = parent.matrix_world @ forearm_mat @ mesh_mat
                         created.append(obj)
                         log.info("Attached fist mesh %s to k_rforearm", obj.name)
             except Exception as exc:  # noqa: BLE001
