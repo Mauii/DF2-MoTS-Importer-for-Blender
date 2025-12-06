@@ -10,7 +10,6 @@ Import Jedi Knight: Dark Forces II / Mysteries of the Sith 3DO models directly f
 - Builds meshes, UVs, vertex/face normals, and applies MAT textures (8-bit with CMP palette or 16-bit).
 - Supports multiple GeoSets (LOD); option to import only the highest LOD.
 - Preserves hierarchy transforms (positions, rotations, pivots, insert offset) to correctly place limbs and parts.
-- Optional coordinate fixes: swap Y/Z, flip X 180°, choose Euler rotation order.
 - Texture saver: export imported MATs to PNG.
 
 ## Installation
@@ -25,14 +24,13 @@ Import Jedi Knight: Dark Forces II / Mysteries of the Sith 3DO models directly f
 3. Select a 3DO from the list (filter with **Search** if needed).
 4. Set options:
    - **Only Highest LOD**: import GeoSet 0 only.
-   - **Rotation Order / Swap YZ / Flip X 180°**: coordinate fixes if something is inverted.
    - **Texture Output**: optional directory to save decoded PNGs (otherwise textures stay packed).
 5. Click **Import**. Meshes appear under a parent object named after the 3DO.
 6. To export textures later, use **Save DF2 Textures**.
 
 ## Notes & Limits
 - Some 3DOs ship with empty meshes (e.g. `k_rhand` in `ky.3do`), so missing parts are often in the source data.
-- UVs use the MAT’s frame dimensions; if a texture looks inverted, toggle **Swap YZ** / **Flip X** or adjust rotation order.
+- UVs use the MAT’s frame dimensions.
 - Only 3DO geometry/materials are imported; keyframes/animations are not included.
 
 ## Building / Versioning

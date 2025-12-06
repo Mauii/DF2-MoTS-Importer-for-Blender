@@ -327,9 +327,6 @@ def _build_objects(
     palette: Optional[List[int]],
     tex_dir: Optional[Path],
     geoset_mode: str = "ALL",
-    rot_order: str = "XYZ",
-    swap_yz: bool = False,
-    flip_x: bool = False,
 ) -> List[bpy.types.Object]:
     material_map = _ensure_materials(gob, three.materials, palette, tex_dir)
     palette_sizes: Dict[int, Tuple[int, int]] = {}
@@ -345,14 +342,8 @@ def _build_objects(
         else:
             palette_sizes[mat_def.index] = (256, 256)
 
-    # Build coordinate conversion matrices
-    conv = Matrix.Identity(4)
-    if swap_yz:
-        conv = Matrix(((1, 0, 0, 0), (0, 0, 1, 0), (0, -1, 0, 0), (0, 0, 0, 1)))
-    flipx = Matrix.Identity(4)
-    if flip_x:
-        flipx = Matrix(((1, 0, 0, 0), (0, -1, 0, 0), (0, 0, -1, 0), (0, 0, 0, 1)))
-    conv_total = conv @ flipx
+    # Coordinate conversion matrix (identity; swap Y/Z removed)
+    conv_total = Matrix.Identity(4)
 
     created: List[bpy.types.Object] = []
     parent = bpy.data.objects.new(three.path.stem, None)
@@ -507,15 +498,12 @@ class DF2_OT_import_model(Operator):
         model_name = scene.df2_models[scene.df2_models_index].name
         tex_dir = Path(scene.df2_tex_dir).expanduser() if scene.df2_tex_dir else None
         geoset_mode = "TOP" if scene.df2_geoset_top else "ALL"
-        rot_order = scene.df2_rot_order
-        swap_yz = scene.df2_swap_yz
-        flip_x = scene.df2_flip_x
 
         try:
             gob = GOB(gob_path)
             palette = _load_cmp_from_gob(gob)
             three = _parse_3do_from_gob(gob, model_name)
-            created = _build_objects(context, gob, three, palette, tex_dir, geoset_mode, rot_order, swap_yz, flip_x)
+            created = _build_objects(context, gob, three, palette, tex_dir, geoset_mode)
         except Exception as exc:  # noqa: BLE001
             self.report({"ERROR"}, f"Import failed: {exc}")
             return {"CANCELLED"}
@@ -623,9 +611,6 @@ class DF2_PT_panel(Panel):
         layout.prop(scene, "df2_tex_dir", text="Texture Output")
         layout.prop(scene, "df2_search", text="Search")
         layout.prop(scene, "df2_geoset_top", text="Only Highest LOD")
-        layout.prop(scene, "df2_rot_order", text="Rotation Order")
-        layout.prop(scene, "df2_swap_yz", text="Swap Y/Z")
-        layout.prop(scene, "df2_flip_x", text="Flip X 180°")
 
         col = layout.column(align=True)
         col.operator(DF2_OT_import_model.bl_idname, icon="IMPORT")
@@ -671,26 +656,6 @@ def register():
         description="Import only the first (highest detail) geoset to avoid duplicates",
         default=True,
     )
-    bpy.types.Scene.df2_rot_order = EnumProperty(
-        name="Rotation Order",
-        description="Euler rotation order for hierarchy nodes",
-        items=[
-            ("XYZ", "XYZ", "Apply rotations in X then Y then Z"),
-            ("YXZ", "YXZ", "Apply rotations in Y then X then Z"),
-            ("ZYX", "ZYX", "Apply rotations in Z then Y then X"),
-        ],
-        default="ZYX",
-    )
-    bpy.types.Scene.df2_swap_yz = BoolProperty(
-        name="Swap Y/Z",
-        description="Convert coords from Y-up to Blender Z-up (recommended on)",
-        default=True,
-    )
-    bpy.types.Scene.df2_flip_x = BoolProperty(
-        name="Flip X 180°",
-        description="Rotate model 180° around X to fix upside-down imports",
-        default=True,
-    )
     bpy.types.Scene.df2_models = CollectionProperty(type=DF2ModelItem)
     bpy.types.Scene.df2_models_index = IntProperty(default=0)
 
@@ -702,9 +667,6 @@ def unregister():
     del bpy.types.Scene.df2_tex_dir
     del bpy.types.Scene.df2_search
     del bpy.types.Scene.df2_geoset_top
-    del bpy.types.Scene.df2_rot_order
-    del bpy.types.Scene.df2_swap_yz
-    del bpy.types.Scene.df2_flip_x
     del bpy.types.Scene.df2_models
     del bpy.types.Scene.df2_models_index
 
