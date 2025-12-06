@@ -512,6 +512,7 @@ def _build_objects(
 
 class DF2ModelItem(PropertyGroup):
     name: StringProperty(name="3DO Name")
+    display_name: StringProperty(name="Display Name")
 
 
 class DF2_OT_load_gob(Operator):
@@ -539,6 +540,8 @@ class DF2_OT_load_gob(Operator):
             if entry.name.lower().endswith(".3do"):
                 item = scene.df2_models.add()
                 item.name = entry.name
+                disp = _MODEL_DISPLAY_MAP.get(entry.name.lower(), entry.name)
+                item.display_name = disp
         scene.df2_models_index = 0
         log.info("Loaded GOB %s with %d 3DO(s)", self.filepath, len(scene.df2_models))
         self.report({"INFO"}, f"Loaded {len(scene.df2_models)} model(s)")
@@ -633,7 +636,7 @@ class DF2_UL_models(UIList):
     bl_idname = "DF2_UL_models"
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        display = _MODEL_DISPLAY_MAP.get(item.name.lower(), item.name)
+        display = getattr(item, "display_name", "") or item.name
         if self.layout_type in {"DEFAULT", "COMPACT"}:
             layout.label(text=display, icon="MESH_CUBE")
         elif self.layout_type == "GRID":
