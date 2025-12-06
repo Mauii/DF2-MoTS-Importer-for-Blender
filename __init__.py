@@ -466,6 +466,44 @@ def _build_objects(
         # Include parent (insert offset) in world placement
         mobj.matrix_world = parent.matrix_world @ base_mat
 
+    # If right hand is missing, mirror left hand across hip and parent to right forearm
+    name_to_obj: Dict[str, bpy.types.Object] = {}
+    for n in three.hierarchy_nodes:
+        if n.mesh_index is None or not n.name:
+            continue
+        obj = mesh_objects.get(n.mesh_index)
+        if obj:
+            name_to_obj[n.name.lower()] = obj
+
+    if "k_rhand" not in name_to_obj and "k_lhand" in name_to_obj:
+        lhand = name_to_obj.get("k_lhand")
+        hip_obj = name_to_obj.get("k_hip")
+        rforearm = name_to_obj.get("k_rforearm")
+        if lhand and hip_obj and rforearm:
+            try:
+                rhand = lhand.copy()
+                rhand.data = lhand.data.copy()
+                rhand.name = "k_rhand"
+                context.collection.objects.link(rhand)
+                # Mirror around hip on X axis
+                mod = rhand.modifiers.new(name="Mirror", type="MIRROR")
+                mod.use_axis = (True, False, False)
+                mod.mirror_object = hip_obj
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                eval_obj = rhand.evaluated_get(depsgraph)
+                new_mesh = bpy.data.meshes.new_from_object(eval_obj)
+                rhand.modifiers.clear()
+                rhand.data = new_mesh
+                # Preserve world transform and parent to right forearm
+                rhand.matrix_world = lhand.matrix_world
+                rhand.parent = rforearm
+                rhand.parent_type = "OBJECT"
+                rhand.matrix_parent_inverse = rforearm.matrix_world.inverted() @ rhand.matrix_world
+                created.append(rhand)
+                log.info("Created mirrored right hand from left hand")
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Failed to mirror right hand: %s", exc)
+
     return created
 
 
