@@ -654,7 +654,9 @@ class DF2_UL_models(UIList):
         if search:
             for it in items:
                 name = getattr(it, "name", "")
-                flags.append(self.bitflag_filter_item if search in name.lower() else 0)
+                disp = getattr(it, "display_name", "")
+                combined = f"{name} {disp}".lower()
+                flags.append(self.bitflag_filter_item if search in combined else 0)
         else:
             flags = [self.bitflag_filter_item] * len(items)
         return flags, []
