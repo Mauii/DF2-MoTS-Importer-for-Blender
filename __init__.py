@@ -223,17 +223,6 @@ def _decode_mat_first_frame(data: bytes, palette: Optional[List[int]]) -> Tuple[
     return width, height, pixels, has_alpha
 
 
-def _calc_normals_safe(mesh_data: bpy.types.Mesh) -> None:
-    for fn in ("calc_normals_split", "calc_normals"):
-        if hasattr(mesh_data, fn):
-            try:
-                getattr(mesh_data, fn)()
-                return
-            except Exception:
-                continue
-    log.info("Mesh normal recalculation not available; continuing")
-
-
 def _parse_3do_from_gob(gob: GOB, name: str) -> ThreeDO:
     entry = gob.find(name)
     if entry is None:
@@ -353,8 +342,6 @@ def _create_mesh_object(mesh_def, material_map: Dict[int, bpy.types.Material], t
                 uv_layer.data[loop_idx].uv = (u, v)
 
     obj = bpy.data.objects.new(mesh_def.name or "3DO_Object", mesh_data)
-    # Let Blender compute normals (fallback-safe)
-    _calc_normals_safe(mesh_data)
     return obj
 
 
