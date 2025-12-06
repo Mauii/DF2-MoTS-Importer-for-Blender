@@ -36,6 +36,7 @@ def _setup_logger() -> logging.Logger:
 
 
 log = _setup_logger()
+_MODEL_DISPLAY_MAP: Dict[str, str] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +104,40 @@ def _find_entry_by_basename(gob: GOB, name: str):
         if Path(e.name).name.lower() == base:
             return e
     return None
+
+
+def _load_model_display_map(gob: GOB) -> Dict[str, str]:
+    """
+    Parse models.dat (if present) to map 3DO filenames to display names.
+    """
+    entry = _find_entry_by_basename(gob, "models.dat")
+    if entry is None:
+        return {}
+    try:
+        data = gob.get_data(entry).decode("ascii", errors="ignore")
+    except Exception:
+        return {}
+
+    mapping: Dict[str, str] = {}
+    for line in data.splitlines():
+        if "#" not in line:
+            continue
+        # Look for: ky.3do ... #"Katarn"
+        parts = line.split("#", 1)
+        left = parts[0]
+        right = parts[1]
+        name = None
+        if '"' in right:
+            name = right.split('"')[1].strip()
+        tokens = left.replace("\t", " ").split()
+        three = None
+        for tok in tokens:
+            if tok.lower().endswith(".3do"):
+                three = tok
+                break
+        if three and name:
+            mapping[three.lower()] = name
+    return mapping
 
 
 def _decode_mat_first_frame(data: bytes, palette: Optional[List[int]]) -> Tuple[int, int, List[float], bool]:
@@ -456,6 +491,7 @@ class DF2_OT_load_gob(Operator):
     filter_glob: StringProperty(default="*.gob;*.goo", options={"HIDDEN"})
 
     def execute(self, context):
+        global _MODEL_DISPLAY_MAP
         scene = context.scene
         try:
             gob = GOB(self.filepath)
@@ -463,6 +499,7 @@ class DF2_OT_load_gob(Operator):
             self.report({"ERROR"}, f"Failed to read GOB: {exc}")
             return {"CANCELLED"}
 
+        _MODEL_DISPLAY_MAP = _load_model_display_map(gob)
         scene.df2_gob_path = self.filepath
         scene.df2_models.clear()
         for entry in gob.list_entries():
@@ -563,8 +600,9 @@ class DF2_UL_models(UIList):
     bl_idname = "DF2_UL_models"
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        display = _MODEL_DISPLAY_MAP.get(item.name.lower(), item.name)
         if self.layout_type in {"DEFAULT", "COMPACT"}:
-            layout.label(text=item.name, icon="MESH_CUBE")
+            layout.label(text=display, icon="MESH_CUBE")
         elif self.layout_type == "GRID":
             layout.alignment = "CENTER"
             layout.label(text="", icon="MESH_CUBE")
