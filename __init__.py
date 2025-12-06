@@ -353,8 +353,8 @@ def _create_mesh_object(mesh_def, material_map: Dict[int, bpy.types.Material], t
                 uv_layer.data[loop_idx].uv = (u, v)
 
     obj = bpy.data.objects.new(mesh_def.name or "3DO_Object", mesh_data)
-    # Let Blender compute normals
-    mesh_data.calc_normals()
+    # Let Blender compute normals (fallback-safe)
+    _calc_normals_safe(mesh_data)
     return obj
 
 
